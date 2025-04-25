@@ -21,6 +21,7 @@ from Display.AzimutalGrid import *
 
 from utils.conversions import *
 
+import glfw
 
 import threading
 
@@ -31,8 +32,9 @@ def init():
     generate_points_on_sphere()
 
 def display():
-    global RADIUS, desenhar_chao, desenhar_grade_equatorial, visao_carta_celeste, animacao_rodando,desenhar_grade_azimutal, lat, lon, is_fullscreen, estrelas_carta_celeste, estrelas_posicao_real, go_to_star
+    global RADIUS,t, desenhar_chao, desenhar_grade_equatorial, visao_carta_celeste, animacao_rodando,desenhar_grade_azimutal, lat, lon, is_fullscreen, estrelas_carta_celeste, estrelas_posicao_real, go_to_star
     global camera_carta_celeste, camera_lateral
+    global projection_type
     glClearColor(red, green, blue, 1)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     glLoadIdentity()
@@ -76,7 +78,15 @@ def display():
     if desenhar_grade_equatorial:
         draw_equatorial_sphere_grid(lat)
     if desenhar_grade_azimutal:
-        draw_sphere_grid()
+        # draw_sphere_grid()
+        
+        draw_morphing_upper_sphere_grid(t,projection_type=projection_type)
+        dt = 1 - t
+
+        if abs(dt) > THRESHOLD:
+            all_stars_reached = True
+
+        t += dt * 0.05 * SPEED *0.8
 
     # lon += 0.01
     # if (lon >= 180):
@@ -159,7 +169,7 @@ def save_screenshot(filename="high_res_screenshot.png"):
 def keyboard(key, x, y):
     global estrelas_carta_celeste, desenhar_chao, desenhar_grade_equatorial, animacao_rodando,animation_queue,desenhar_grade_azimutal, red, green, blue, star_color, estrelas_posicao_real, viewer_height, go_to_star
     global camera_lateral, camera_carta_celeste, camera_heitor
-    global is_fullscreen
+    global t
     if key == b'c':
         estrelas_carta_celeste = not estrelas_carta_celeste
         print(estrelas_carta_celeste)
@@ -170,6 +180,8 @@ def keyboard(key, x, y):
         camera_lateral = not camera_lateral
     elif key == b'3':
         camera_heitor = not camera_heitor
+    elif key == b'l':
+        glutFullScreenToggle()
     elif key == b's':
         save_screenshot()
     elif key == b'e':
@@ -190,6 +202,7 @@ def keyboard(key, x, y):
     elif key == b'm':
         go_to_star = not go_to_star
     elif key == b'z':
+        t = 0
         desenhar_grade_azimutal = not desenhar_grade_azimutal
     elif key == b'i':
         if (not red == 1):

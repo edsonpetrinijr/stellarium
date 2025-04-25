@@ -38,7 +38,7 @@ def generate_points_on_sphere():
     
         star_size = 10 * np.e ** (-0.33 * mag)
 
-        if (mag < 5):
+        if mag < 5:
             stars_data.append((identifier, x,y,z,star_size, theta, phi, ra, dec, 1, mag, plx))
 
     POINTS = copy.deepcopy(stars_data)
@@ -78,7 +78,7 @@ def generate_points_on_sphere():
 #     POINTS = copy.deepcopy(stars_data)
 
 def draw_stars(go_to_star, estrelas_posicao_real, estrelas_carta_celeste, star_color, lat, lon):
-    global POINTS, stars_data, RADIUS, SPEED
+    global POINTS, stars_data, RADIUS, SPEED, projection_type
 
     new_points = []
 
@@ -169,26 +169,22 @@ def draw_stars(go_to_star, estrelas_posicao_real, estrelas_carta_celeste, star_c
             if target_z > 0:
                 alpha=1
                 factor = (2 * theta_new) / math.pi
-
-                # Ayre expandida
-                # target_x = RADIUS * theta_new * math.sin(phi_new)
-                # target_y = RADIUS * theta_new * math.cos(phi_new)
-                # target_z = RADIUS
-
-                # Estereografica
-                # target_x = 2*RADIUS * math.tan(theta_new/2) * math.sin(phi_new)
-                # target_y = 2*RADIUS * math.tan(theta_new/2) * math.cos(phi_new)
-                # target_z = RADIUS
-                
-                # Ortogonal
-                # target_x = x_new
-                # target_y = y_new
-                # target_z = RADIUS
-                
-                # Ayre
-                target_x = RADIUS * factor * math.cos(phi_new)
-                target_y = RADIUS * factor * math.sin(phi_new)
-                target_z = RADIUS
+                if projection_type == "orthographic":
+                    target_z = RADIUS
+                elif projection_type == "ayre":
+                    target_x = RADIUS * factor * math.cos(phi_new)
+                    target_y = RADIUS * factor * math.sin(phi_new)
+                    target_z = RADIUS
+                elif projection_type == "ayre_expanded":
+                    target_x = RADIUS * theta_new * math.cos(phi_new)
+                    target_y = RADIUS * theta_new * math.sin(phi_new)
+                    target_z = RADIUS
+                elif projection_type == "stereographic":
+                    target_x = 2*RADIUS * math.tan(theta_new/2) * math.sin(phi_new)
+                    target_y = 2*RADIUS * math.tan(theta_new/2) * math.cos(phi_new)
+                    target_z = RADIUS
+                else:
+                    print("n tem")
 
                 dx = target_x - x
                 dy = target_y - y
