@@ -44,9 +44,11 @@ def orthographic_projection(x, y, z, t):
     return x, y  # No change to the x, y coordinates
 
 def stereographic_projection(x, y, z, t):
-    denom = 1 + z / RADIUS
-    return x / denom, y / denom
-
+    ponto = np.array([x, y, z])
+    r = np.linalg.norm(ponto)
+    theta_new = math.acos(z / r)
+    phi_new = math.atan2(y, x)
+    return 2 * RADIUS * math.tan(theta_new/2) * math.cos(phi_new), 2*RADIUS * math.tan(theta_new/2) * math.sin(phi_new)
 def ayre_projection(x, y, z, t):
     ponto = np.array([x, y, z])
     r = np.linalg.norm(ponto)
@@ -65,6 +67,98 @@ def ayre_expanded_projection(x, y, z, t):
 def perspective_projection(x, y, z, t, d=500):
     factor = d / (d - z)  # Simulating a perspective with a distance `d`
     return x * factor, y * factor
+
+def draw_morphing_upper_sphere_grid(
+    t,
+    lat_segments=18,
+    lon_segments=24,
+    resolution=3,
+    projection_type="ayre_expanded"
+):
+    # choose projection function
+    if projection_type == "orthographic":
+        proj = orthographic_projection
+    elif projection_type == "ayre":
+        proj = ayre_projection
+    elif projection_type == "ayre_expanded":
+        proj = ayre_expanded_projection
+    elif projection_type == "stereographic":
+        proj = stereographic_projection
+    else:
+        raise ValueError(f"Unknown projection: {projection_type}")
+
+    lon_samples = lon_segments * resolution
+    lat_samples = lat_segments * resolution
+    half = lat_segments // 2
+
+    glPushMatrix()
+    glEnable(GL_BLEND)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
+    # LOWER HEMISPHERE (fade out)
+    base_alpha = 0.3
+    lower_alpha = base_alpha * (1.0 - t)
+    glColor4f(0.7, 1.0, 0.7, lower_alpha)
+    if t < 0.75:
+        for i in range(1, half):
+            phi = math.pi * i / lat_segments
+            z0 = -RADIUS * math.cos(phi)
+            glBegin(GL_LINE_LOOP)
+            for j in range(lon_samples):
+                theta = 2 * math.pi * j / lon_samples
+                x = RADIUS * math.sin(phi) * math.cos(theta)
+                y = RADIUS * math.sin(phi) * math.sin(theta)
+                glVertex3f(x, y, z0)
+            glEnd()
+        for j in range(lon_segments):
+            theta = 2 * math.pi * j / lon_segments
+            glBegin(GL_LINE_STRIP)
+            for k in range(lat_samples // 2 + 1):
+                phi = math.pi * k / lat_samples
+                x = RADIUS * math.sin(phi) * math.cos(theta)
+                y = RADIUS * math.sin(phi) * math.sin(theta)
+                z0 = -RADIUS * math.cos(phi)
+                glVertex3f(x, y, z0)
+            glEnd()
+
+    # UPPER HEMISPHERE MORPH USING LINEAR INTERPOLATION
+    base_alpha = 0.3
+    glColor4f(0.7, 1.0, 0.7, base_alpha)
+    z_end = 100.0  # projection plane height
+
+    def _lerp(p0, p1, u):
+        return tuple((1 - u) * a + u * b for a, b in zip(p0, p1))
+
+    for i in range(half + 1):
+        phi = math.pi * i / lat_segments
+        z_s = RADIUS * math.cos(phi)
+        glBegin(GL_LINE_LOOP)
+        for j in range(lon_samples):
+            theta = 2 * math.pi * j / lon_samples
+            x = RADIUS * math.sin(phi) * math.cos(theta)
+            y = RADIUS * math.sin(phi) * math.sin(theta)
+            nx, ny = proj(x, y, z_s, t)
+            p0 = (x, y, z_s)
+            p1 = (nx, ny, z_end)
+            xp, yp, zp = _lerp(p0, p1, t)
+            glVertex3f(xp, yp, zp)
+        glEnd()
+    for j in range(lon_segments):
+        theta = 2 * math.pi * j / lon_segments
+        glBegin(GL_LINE_STRIP)
+        for k in range(lat_samples // 2 + 1):
+            phi = math.pi * k / lat_samples
+            x = RADIUS * math.sin(phi) * math.cos(theta)
+            y = RADIUS * math.sin(phi) * math.sin(theta)
+            z_s = RADIUS * math.cos(phi)
+            nx, ny = proj(x, y, z_s, t)
+            p0 = (x, y, z_s)
+            p1 = (nx, ny, z_end)
+            xp, yp, zp = _lerp(p0, p1, t)
+            glVertex3f(xp, yp, zp)
+        glEnd()
+
+    glPopMatrix()
 
 
 def draw_morphing_upper_sphere_grid_copy(
@@ -194,95 +288,3 @@ def draw_morphing_upper_sphere_grid_copy(
         glEnd()
 
     glPopMatrix()
-
-
-
-def draw_morphing_upper_sphere_grid(
-    t,
-    lat_segments=18,
-    lon_segments=24,
-    resolution=3,
-    projection_type="ayre_expanded"
-):
-    # pick projection…
-    if projection_type == "orthographic":
-        proj = orthographic_projection
-    elif projection_type == "ayre":
-        proj = ayre_projection
-    elif projection_type == "ayre_expanded":
-        proj = ayre_expanded_projection
-    elif projection_type == "stereographic":
-        proj = stereographic_projection
-    else:
-        raise ValueError(f"Unknown projection: {projection_type}")
-
-    lon_samples = lon_segments * resolution
-    lat_samples = lat_segments * resolution
-    half = lat_segments // 2
-
-    glPushMatrix()
-    glEnable(GL_BLEND)
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-
-    # ─── LOWER HEMISPHERE (fade out) ────────────────────
-    # compute a fading alpha for the lower hemisphere:
-    base_alpha = 0.3
-    lower_alpha = base_alpha * (1.0 - t)
-    glColor4f(0.7, 1.0, 0.7, lower_alpha)
-
-    # latitude circles
-    for i in range(1, half):
-        φ = math.pi * i / lat_segments
-        z0 = -RADIUS * math.cos(φ)
-        glBegin(GL_LINE_LOOP)
-        for j in range(lon_samples):
-            θ = 2 * math.pi * j / lon_samples
-            x = RADIUS * math.sin(φ) * math.cos(θ)
-            y = RADIUS * math.sin(φ) * math.sin(θ)
-            glVertex3f(x, y, z0)
-        glEnd()
-
-    # meridians
-    for j in range(lon_segments):
-        θ = 2 * math.pi * j / lon_segments
-        glBegin(GL_LINE_STRIP)
-        for k in range(lat_samples // 2 + 1):
-            φ = math.pi * k / lat_samples
-            x = RADIUS * math.sin(φ) * math.cos(θ)
-            y = RADIUS * math.sin(φ) * math.sin(θ)
-            z0 = -RADIUS * math.cos(φ)
-            glVertex3f(x, y, z0)
-        glEnd()
-
-    # ─── UPPER HEMISPHERE MORPH ────────────────────────────
-    # Reset to full alpha for the upper hemisphere (or choose your own)
-    glColor4f(0.7, 1.0, 0.7, base_alpha)
-
-    for i in range(0, half + 1):
-        φ = math.pi * i / lat_segments
-        z_s = RADIUS * math.cos(φ)
-        glBegin(GL_LINE_LOOP)
-        for j in range(lon_samples):
-            θ = 2 * math.pi * j / lon_samples
-            x = RADIUS * math.sin(φ) * math.cos(θ)
-            y = RADIUS * math.sin(φ) * math.sin(θ)
-            nx, ny = proj(x, y, z_s, t)
-            z = (1 - t) * z_s + t * 100.0
-            glVertex3f(nx, ny, z)
-        glEnd()
-
-    for j in range(lon_segments):
-        θ = 2 * math.pi * j / lon_segments
-        glBegin(GL_LINE_STRIP)
-        for k in range(lat_samples // 2 + 1):
-            φ = math.pi * k / lat_samples
-            x = RADIUS * math.sin(φ) * math.cos(θ)
-            y = RADIUS * math.sin(φ) * math.sin(θ)
-            z_s = RADIUS * math.cos(φ)
-            nx, ny = proj(x, y, z_s, t)
-            z = (1 - t) * z_s + t * 100.0
-            glVertex3f(nx, ny, z)
-        glEnd()
-
-    glPopMatrix()
-

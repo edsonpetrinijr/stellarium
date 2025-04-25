@@ -43,42 +43,8 @@ def generate_points_on_sphere():
 
     POINTS = copy.deepcopy(stars_data)
 
-
-
-
-
-
-# def generate_points_on_sphere():
-#     global POINTS, original_points, lat, lon, stars_data
-#     csv_path = 'stars_data.csv'
-
-#     df = pd.read_csv(csv_path)
-#     df = df.groupby('Constellation').head(20)
-
-#     for _, row in df.iterrows():
-#         try:
-#             dec = dec_to_deg(row['Declination'])
-#             ra = ra_to_deg(row['Right Ascension'])
-#             mag = row['Apparent Magnitude']
-#         except Exception as e:
-#             print(f"Erro ao processar {row.get('Name', 'estrela desconhecida')}: {e}")
-#             continue
-        
-#         theta = np.radians(90 - dec)
-#         phi = np.radians(ra - 90)
-
-#         x = -RADIUS * math.sin(theta) * math.cos(phi)
-#         y = RADIUS * math.cos(theta)
-#         z = RADIUS * math.sin(theta) * math.sin(phi)
-    
-#         star_size = 10 * np.e ** (-0.33 * mag)
-
-#         stars_data.append((x,y,z,star_size, theta, phi, ra, dec, 1, mag))
-#     # original_points = copy.deepcopy(POINTS)
-#     POINTS = copy.deepcopy(stars_data)
-
 def draw_stars(go_to_star, estrelas_posicao_real, estrelas_carta_celeste, star_color, lat, lon):
-    global POINTS, stars_data, RADIUS, SPEED, projection_type
+    global POINTS, stars_dataSPEED, projection_type
 
     new_points = []
 
@@ -122,9 +88,9 @@ def draw_stars(go_to_star, estrelas_posicao_real, estrelas_carta_celeste, star_c
 
         (identifier, x, y, z, star_size, theta, phi, ra, dec, alpha, mag, plx) = POINTS[i]
         
-        if go_to_star:
-            target_x, target_y, target_z, theta_new, phi_new = rotate_point(x_original, y_original, z_original, lat, lon)
+        target_x, target_y, target_z, theta_new, phi_new = rotate_point(x_original, y_original, z_original, lat, lon)
 
+        if go_to_star:
             x_original_test = target_x / plx_original
             y_original_test = target_y / plx_original
             z_original_test = target_z / plx_original
@@ -140,34 +106,16 @@ def draw_stars(go_to_star, estrelas_posicao_real, estrelas_carta_celeste, star_c
             phi_new = math.atan2(target_y, target_x)
             if r != 0:
                 mag_new = mag - 5 * (math.log10(RADIUS / (r * plx)))
-            star_size = 10 * np.e ** (-0.33 * mag_new)
-        elif estrelas_posicao_real:
-            target_x, target_y, target_z, theta_new, phi_new = rotate_point(x_original, y_original, z_original, lat, lon)
-            target_x /= plx
-            target_y /= plx
-            target_z /= plx
-
-            star_size = 10 * np.e ** (-0.33 * mag)
+            star_size_target = 10 * np.e ** (-0.33 * mag_new)
+            target_x /= r/100
+            target_y /= r/100
+            target_z /= r/100
         else:
-            target_x, target_y, target_z, theta_new, phi_new = rotate_point(x_original, y_original, z_original, lat, lon)
-
-            star_size = 10 * np.e ** (-0.33 * mag)
-
-        # dx = target_x - x
-        # dy = target_y - y
-        # dz = target_z - z
-
-        # x += dx * 0.05 * SPEED
-        # y += dy * 0.05 * SPEED
-        # z += dz * 0.05 * SPEED
-
-
-        # if alpha < 1:
-        #     alpha = min(1, alpha + 0.05 * SPEED)
+            star_size_target = 10 * np.e ** (-0.33 * mag)
 
         if estrelas_carta_celeste:
             if target_z > 0:
-                alpha=1
+                alpha_target = 1
                 factor = (2 * theta_new) / math.pi
                 if projection_type == "orthographic":
                     target_z = RADIUS
@@ -180,44 +128,46 @@ def draw_stars(go_to_star, estrelas_posicao_real, estrelas_carta_celeste, star_c
                     target_y = RADIUS * theta_new * math.sin(phi_new)
                     target_z = RADIUS
                 elif projection_type == "stereographic":
-                    target_x = 2*RADIUS * math.tan(theta_new/2) * math.sin(phi_new)
-                    target_y = 2*RADIUS * math.tan(theta_new/2) * math.cos(phi_new)
+                    target_x = 2*RADIUS * math.tan(theta_new/2) * math.cos(phi_new)
+                    target_y = 2*RADIUS * math.tan(theta_new/2) * math.sin(phi_new)
                     target_z = RADIUS
                 else:
                     print("n tem")
-
-                dx = target_x - x
-                dy = target_y - y
-                dz = target_z - z
-
-                x += dx * 0.05 * SPEED
-                y += dy * 0.05 * SPEED
-                z += dz * 0.05 * SPEED
-            
-            # elif alpha > 0:
-            #     alpha = max(0, alpha - 0.05 * SPEED)
             else:
-                alpha = 0
-
-            new_points.append((identifier, x, y, z, star_size, theta, phi, ra, dec, alpha, mag, plx))
+                alpha_target = 0
+        elif estrelas_posicao_real:
+            target_x /= plx
+            target_y /= plx
+            target_z /= plx
+            if target_z < 0 and estrelas_carta_celeste:
+                alpha_target = 0
+            else:
+                alpha_target = 1
         else:
-            dx = target_x - x
-            dy = target_y - y
-            dz = target_z - z
+            alpha_target = 1
 
-            x += dx * 0.05 * SPEED
-            y += dy * 0.05 * SPEED
-            z += dz * 0.05 * SPEED
-            alpha=1
+        dx = target_x - x
+        dy = target_y - y
+        dz = target_z - z
 
-            new_points.append((identifier, x, y, z, star_size, theta_new, phi_new, ra, dec, alpha, mag, plx))
-
-
-        glPointSize(star_size)
-        glBegin(GL_POINTS)
-        glColor4f(*star_color, alpha)
-        glVertex3f(x, y, z)
-        glEnd()
+        x += dx * SPEED
+        y += dy * SPEED
+        z += dz * SPEED
+        
+        dsize = star_size_target - star_size
+        star_size += dsize * SPEED
+        
+        dalpha = alpha_target - alpha
+        alpha += dalpha * SPEED
+        
+        new_points.append((identifier, x, y, z, star_size, theta_new, phi_new, ra, dec, alpha, mag, plx))
+        
+        if alpha > 0.01:
+            glPointSize(star_size)
+            glBegin(GL_POINTS)
+            glColor4f(*star_color, alpha)
+            glVertex3f(x, y, z)
+            glEnd()
 
     POINTS = new_points
 

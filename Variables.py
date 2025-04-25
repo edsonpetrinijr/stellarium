@@ -1,14 +1,9 @@
 import numpy as np
 import math
 
-TARGET_Y = 100
-SPEED = 1.0 
+SPEED = 0.05
 RADIUS = 100  # Tamanho da esfera
-THRESHOLD = 1  # Tolerância para considerar que a estrela chegou ao destino
-finished = False  # Flag global para evitar prints repetidos
-# Variável global de controle
-move_camera = False
-t=0
+t = 0
 POINTS = []
 
 camera_carta_celeste = False
@@ -54,15 +49,15 @@ original_points = []
 
 
 
-desenhar_chao = True
-desenhar_grade_equatorial = True
-visao_carta_celeste = False
-
+desenhar_chao = False
+desenhar_grade_equatorial = False
 desenhar_grade_azimutal = False
+
+visao_carta_celeste = False
 
 animacao_rodando = False
 
 animation_queue = []
 estrelas_posicao_real = False
 
-projection_type = "ayre_expanded"
+projection_type = "stereographic"
