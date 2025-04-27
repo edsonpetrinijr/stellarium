@@ -1,15 +1,12 @@
 import copy
-from PIL import Image
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
+from PIL import Image
 
 import math
 import pandas as pd
 import numpy as np
-
-from animation.lerp_angle import *
-from animation.ease_in_out import *
 
 from Display.CelestialSphere import *
 from Display.Ground import *
@@ -36,7 +33,7 @@ def init():
 
 
 def display():
-    global RADIUS,t, desenhar_chao, desenhar_grade_equatorial, visao_carta_celeste, animacao_rodando,desenhar_grade_azimutal, lat, lon, is_fullscreen, estrelas_carta_celeste, estrelas_posicao_real, go_to_star
+    global RADIUS, t, desenhar_chao, desenhar_grade_equatorial,desenhar_grade_azimutal, lat, lon, estrelas_carta_celeste, estrelas_esfera_celeste, go_to_star, camera_normal
     global camera_carta_celeste, camera_lateral, t
     global projection_type
     glClearColor(red, green, blue, 1)
@@ -50,7 +47,8 @@ def display():
     glEnable(GL_CULL_FACE)
     glCullFace(GL_FRONT)
 
-    if (visao_carta_celeste):
+    
+    if (camera_carta_celeste or camera_lateral):
         glViewport(0, 0, width, height)
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
@@ -59,12 +57,14 @@ def display():
         size = RADIUS + fov # quanto maior, mais "zoom out"
 
         glOrtho(-size * aspect, size * aspect, -size, size, -1000, 1000)
+
         if (camera_carta_celeste):
             gluLookAt(
                 0, 0, -90,    # posição do observador (centro da esfera)
                 0, 0, 0,    # ponto para onde está olhando (eixo Y positivo)
                 0, 1, 0     # vetor 'up' (Z positivo para manter orientação "natural")
             )
+
         elif (camera_lateral):
             gluLookAt(
                 0, -90, 0,    # posição do observador (centro da esfera)
@@ -76,7 +76,6 @@ def display():
         glLoadIdentity()
     else:
         update_projection()
-
 
     if desenhar_chao:
         draw_ground()
@@ -105,18 +104,8 @@ def display():
         
         draw_morphing_upper_sphere_grid(t, projection_type=projection_type)
 
-    # lon += 0.01
-    # if (lon >= 180):
-    #     lon = -180
+    draw_stars(go_to_star, estrelas_esfera_celeste, estrelas_carta_celeste, star_color, lat, lon)
 
-    draw_stars(go_to_star, estrelas_posicao_real, estrelas_carta_celeste, star_color, lat, lon)
-
-    RIGEL = (88.79287500000001, 7.4070277777777775)
-    BETELGEUSE = (78.63445833333334, -8.201638888888889)
-    ANTARES = (247.35195833333333, -26.431944444444444)
-
-    # move_to_ra_dec(*RIGEL)
- 
     glDisable(GL_CULL_FACE)
     glutSwapBuffers()
 
@@ -135,8 +124,6 @@ def mouse(button, state, x, y):
         mouse_down = (state == GLUT_DOWN)
         last_x = x
         last_y = y
-    elif button == GLUT_RIGHT_BUTTON and state == GLUT_DOWN:
-        visao_carta_celeste = not visao_carta_celeste
     elif button == 3:
         zoom_in()
     elif button == 4:
@@ -144,13 +131,13 @@ def mouse(button, state, x, y):
 
 def zoom_in():
     global fov
-    fov = max(10, fov - 2)
+    fov = max(5, fov - 2)
     update_projection()
     glutPostRedisplay()
 
 def zoom_out():
     global fov
-    fov = min(100, fov + 2)
+    fov = min(120, fov + 2)
     update_projection()
     glutPostRedisplay()
     
@@ -170,7 +157,6 @@ def motion(x, y):
         last_y = y
         glutPostRedisplay()
 
-
 def save_screenshot(filename="high_res_screenshot.png"):
     # Obtém o tamanho atual da janela OpenGL
     viewport = glGetIntegerv(GL_VIEWPORT)
@@ -184,46 +170,50 @@ def save_screenshot(filename="high_res_screenshot.png"):
     image.save(filename)
     print(f"Imagem salva como {filename} ({width}x{height})")
 
-
 def keyboard(key, x, y):
-    global estrelas_carta_celeste, desenhar_chao, desenhar_grade_equatorial, animacao_rodando,animation_queue,desenhar_grade_azimutal, red, green, blue, star_color, estrelas_posicao_real, viewer_height, go_to_star
-    global camera_lateral, camera_carta_celeste, camera_heitor
+    print(key)
+    """
+        1, 2, 3: Câmeras
+        # I, O, P : Posição Real, Esfera, Plano
+        C: Inverter Cor
+        # Projeção
+        E, Z, G: Grade Equatorial, Azimutal, Chão
+    """
+    global estrelas_carta_celeste, estrelas_esfera_celeste, desenhar_chao, desenhar_grade_equatorial, desenhar_grade_azimutal, red, green, blue, star_color, viewer_height, go_to_star
+    global camera_normal, camera_carta_celeste, camera_lateral
     global t
-    if key == b'c':
-        estrelas_carta_celeste = not estrelas_carta_celeste
-        
-        print(estrelas_carta_celeste)
-        visao_carta_celeste = True
-    elif key == b'1':
-        camera_carta_celeste = not camera_carta_celeste
+
+    if key == b'1':
+        camera_carta_celeste = False
+        camera_lateral = False
     elif key == b'2':
-        camera_lateral = not camera_lateral
+        camera_carta_celeste = True
+        camera_lateral = False
     elif key == b'3':
-        camera_heitor = not camera_heitor
-    elif key == b'l':
-        glutFullScreenToggle()
-    elif key == b's':
-        save_screenshot()
+        camera_carta_celeste = False
+        camera_lateral = True
+
     elif key == b'e':
         desenhar_grade_equatorial = not desenhar_grade_equatorial
-    elif key == b'g':
-        desenhar_chao = not desenhar_chao
-    # elif key == b'a':
-    #     animation_queue.append((88.79287500000001, 7.4070277777777775))  # RIGEL
-
-    #     animation_queue.append((78.63445833333334, -8.201638888888889))  # BETELGEUSE
-    #     animacao_rodando = True
-    elif key == b'h':
-        # if viewer_height == 0:
-        #     viewer_height = 10
-        # else:
-        #     viewer_height = 0
-        estrelas_posicao_real = not estrelas_posicao_real
-    elif key == b'm':
-        go_to_star = not go_to_star
     elif key == b'z':
         desenhar_grade_azimutal = not desenhar_grade_azimutal
+    elif key == b'g':
+        desenhar_chao = not desenhar_chao
+    
     elif key == b'i':
+        estrelas_esfera_celeste = False
+        estrelas_carta_celeste = False
+    elif key == b'o':
+        estrelas_esfera_celeste = True
+        estrelas_carta_celeste = False
+    elif key == b'p':
+        estrelas_esfera_celeste = False
+        estrelas_carta_celeste = True
+    
+    elif key == b't':
+        go_to_star = not go_to_star
+
+    elif key == b'c':
         if (not red == 1):
             red, green, blue = 1, 1, 1
             star_color = (0,0,0)
@@ -232,6 +222,14 @@ def keyboard(key, x, y):
             green = 0.05
             blue = 0.1
             star_color = (1,1,1)
+
+def specialKeyboard(key, x, y):
+    print(key)
+
+    if key == GLUT_KEY_F2:
+        save_screenshot()
+    elif key == GLUT_KEY_F11:
+        glutFullScreenToggle()
 
 def reshape(w, h):
     global width, height
@@ -271,17 +269,20 @@ def get_new_lat():
         except ValueError:
             print("Por favor, insira um número válido.")
 
+
 def main():
     glutInit()
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)
+    # TODO: FULLSCREEN
     glutInitWindowSize(width, height)
     glutCreateWindow(b"Cosmos")
     init()
     glutDisplayFunc(display)
     glutReshapeFunc(reshape)
     glutMouseFunc(mouse)
-    glutMotionFunc(motion)  
+    glutMotionFunc(motion)
     glutKeyboardFunc(keyboard)
+    glutSpecialFunc(specialKeyboard)
     threading.Thread(target=get_new_lat, daemon=True).start()
     glutMainLoop()
  
