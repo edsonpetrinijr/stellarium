@@ -28,6 +28,12 @@ def init():
     glEnable(GL_POINT_SMOOTH)
     glHint(GL_POINT_SMOOTH_HINT, GL_NICEST)
     generate_points_on_sphere()
+    
+    #Edson veja: Heitor
+    glEnable(GL_BLEND)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+    glEnable(GL_ALPHA_TEST)
+
 
 def display():
     global RADIUS,t, desenhar_chao, desenhar_grade_equatorial, visao_carta_celeste, animacao_rodando,desenhar_grade_azimutal, lat, lon, is_fullscreen, estrelas_carta_celeste, estrelas_posicao_real, go_to_star
@@ -75,7 +81,17 @@ def display():
     if desenhar_chao:
         draw_ground()
     if desenhar_grade_equatorial:
-        draw_equatorial_sphere_grid(lat)
+        #draw_equatorial_sphere_grid(lat)
+        if estrelas_carta_celeste:
+            target_t = 1
+        else:
+            target_t = 0
+        dt = target_t - t
+        t += dt * SPEED
+        
+        if t < 0.05:
+            t = 0
+        draw_morphing_equatorial_sphere_grid(lat,t, projection_type=projection_type)
     if desenhar_grade_azimutal:
         if estrelas_carta_celeste:
             target_t = 1

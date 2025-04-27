@@ -43,7 +43,7 @@ recording = False
 frames = []
 
 estrelas_carta_celeste = False
-
+sol = [0,0,0,0,0.01]
 
 original_points = []
 
@@ -60,4 +60,4 @@ animacao_rodando = False
 animation_queue = []
 estrelas_posicao_real = False
 
-projection_type = "stereographic"
+projection_type = "ayre"

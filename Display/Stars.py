@@ -44,7 +44,7 @@ def generate_points_on_sphere():
     POINTS = copy.deepcopy(stars_data)
 
 def draw_stars(go_to_star, estrelas_posicao_real, estrelas_carta_celeste, star_color, lat, lon):
-    global POINTS, stars_dataSPEED, projection_type
+    global POINTS, stars_dataSPEED, projection_type, sol
 
     new_points = []
 
@@ -101,15 +101,21 @@ def draw_stars(go_to_star, estrelas_posicao_real, estrelas_carta_celeste, star_c
             
             target_x, target_y, target_z = (x_original_test - x_star_test), (y_original_test - y_star_test), (z_original_test - z_star_test)
             ponto = np.array([target_x, target_y, target_z])
-            r = np.linalg.norm(ponto)
-            theta_new = math.acos(target_z / r)
-            phi_new = math.atan2(target_y, target_x)
-            if r != 0:
+            if target_x!=0 and target_y!=0 and target_z!=0:
+                r = np.linalg.norm(ponto)
+                theta_new = math.acos(target_z / r)
+                phi_new = math.atan2(target_y, target_x)
                 mag_new = mag - 5 * (math.log10(RADIUS / (r * plx)))
-            star_size_target = 10 * np.e ** (-0.33 * mag_new)
-            target_x /= r/100
-            target_y /= r/100
-            target_z /= r/100
+                star_size_target = 10 * np.e ** (-0.33 * mag_new)
+                target_x /= r/100
+                target_y /= r/100
+                target_z /= r/100
+            else:
+                star_size_target = 10 * np.e ** (-0.33 * -10)
+                if x<0.1 and y < 0.1 and z <0.1:
+                    star_size_target = 10 * np.e ** (-0.33 * 5)
+            
+
         else:
             star_size_target = 10 * np.e ** (-0.33 * mag)
 
@@ -168,8 +174,56 @@ def draw_stars(go_to_star, estrelas_posicao_real, estrelas_carta_celeste, star_c
             glColor4f(*star_color, alpha)
             glVertex3f(x, y, z)
             glEnd()
+            
+"""    if go_to_star:
+        x_star_test  = x_star / plx_star
+        y_star_test  = y_star / plx_star
+        z_star_test  = z_star / plx_star
+        
+        target_x_sun = - x_star_test
+        target_y_sun = - y_star_test
+        target_z_sun = - z_star_test
+        ponto = np.array([target_x_sun, target_y_sun, target_z_sun])
+        r_sun = np.linalg.norm(ponto)  
+        mag_new = mag + 5 * (math.log10(r))-5
+        sun_size_target = 10 * np.e ** (-0.33 * mag_new)
+        sun_size_target = 1
+        sun_alpha_target = 1
+    else: 
+        target_x_sun = 0
+        target_y_sun = 0
+        target_z_sun = 0
+        sun_size_target = 0.01
+        sun_alpha_target = 0
+    x_sun = sol[0]
+    y_sun= sol[1]
+    z_sun= sol[2]
+    dx = target_x_sun - x_sun
+    dy = target_y_sun - y_sun
+    dz = target_z_sun - z_sun
+
+    x_sun += dx * SPEED
+    y_sun += dy * SPEED
+    z_sun += dz * SPEED
+    sun_size = sol[3]
+    sun_alpha = sol[4]
+    dsize = sun_size_target - sun_size
+    sun_size += dsize * SPEED
+    
+    dalpha = sun_alpha_target - sun_alpha
+    sun_alpha += dalpha * SPEED
+    
+    glPointSize(sun_size)
+    glBegin(GL_POINTS)
+    glColor4f(*star_color, sun_alpha)
+    glVertex3f(x_sun, y_sun, z_sun)
+    glEnd()
+    sol = [x_sun,y_sun,z_sun,sun_size,sun_alpha]
+"""
+
 
     POINTS = new_points
 
     glDisable(GL_BLEND)
     glutPostRedisplay()
+    
