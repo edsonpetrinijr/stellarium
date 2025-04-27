@@ -64,9 +64,11 @@ def draw_stars(go_to_star, estrelas_posicao_real, estrelas_carta_celeste, star_c
         alpha_star,
         mag_star,
         plx_star
-    ) = [point for point in stars_data if point[0] == "HD 187642"][0]
+    ) = [point for point in stars_data if point[0] == "HD 37128"][0]
     # ALNILAM
     # ) = [point for point in stars_data if point[0] == "HD 37128"][0]
+    #Altair
+    #= [point for point in stars_data if point[0] == "HD 187642"][0]
     
     x_star, y_star, z_star, theta_star, phi_star = rotate_point(x_star, y_star, z_star, lat, lon)
 
@@ -175,6 +177,13 @@ def draw_stars(go_to_star, estrelas_posicao_real, estrelas_carta_celeste, star_c
             glVertex3f(x, y, z)
             glEnd()
             
+
+
+    POINTS = new_points
+
+    glDisable(GL_BLEND)
+    glutPostRedisplay()
+    
 """    if go_to_star:
         x_star_test  = x_star / plx_star
         y_star_test  = y_star / plx_star
@@ -220,10 +229,3 @@ def draw_stars(go_to_star, estrelas_posicao_real, estrelas_carta_celeste, star_c
     glEnd()
     sol = [x_sun,y_sun,z_sun,sun_size,sun_alpha]
 """
-
-
-    POINTS = new_points
-
-    glDisable(GL_BLEND)
-    glutPostRedisplay()
-    
