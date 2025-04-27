@@ -11,8 +11,10 @@ camera_carta_celeste = False
 camera_lateral = False
 
 # 4821,HD 34085,s*b,-0.1431455934,np.degrees(),3.78,0.13
-lat = 0.1431455934 + math.pi
-lon = -(1.372430356 - math.pi)
+# lat = 0.1431455934 + math.pi
+# lon = -(1.372430356 - math.pi)
+lat = -20
+lon = -40
 
 red = 0.05
 green = 0.05
@@ -40,8 +42,8 @@ go_to_star = False
 
 estrelas_carta_celeste = False
 
-desenhar_chao = False
-desenhar_grade_equatorial = False
+desenhar_chao = True
+desenhar_grade_equatorial = True
 desenhar_grade_azimutal = False
 
 estrelas_esfera_celeste = False

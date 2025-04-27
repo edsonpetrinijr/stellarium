@@ -38,11 +38,22 @@ def generate_points_on_sphere():
         if (mag < 5):
             STARS.append({
                 'id': identifier,
-                'original': {'x': x, 'y': y, 'z': z, 'mag': mag, 'alpha': 1},
-                'current': {'x': x, 'y': y, 'z': z, 'mag': mag, 'alpha': 1},
-                'theta': theta, 'phi': phi, 'ra': ra, 'dec': dec,
-                'parallax': parallax,
+                'original': {
+                    'position': np.array([x, y, z]),
+                    'distance': RADIUS / parallax,
+                    'mag': mag,
+                    'alpha': 1,
+                    'absolute_mag': mag - 5 * math.log10(1 / parallax) + 5,
+                },
+                'current': { 
+                    'position': np.array([x, y, z]),
+                    'real_position': np.array([x, y, z]),
+                    'distance': RADIUS / parallax,
+                    'mag': mag,
+                    'alpha': 1,
+                }
             })
+
         # STARS.append({
         #     'id': "Sol",
         #     'original': {'x': 0, 'y': 0, 'z': 0, 'mag': 0, 'alpha': 0},
@@ -51,94 +62,69 @@ def generate_points_on_sphere():
         #     'parallax': 0,
         #     })
 
+
 def draw_stars(go_to_star, estrelas_esfera_celeste, estrelas_carta_celeste, star_color, lat, lon):
-    global STARS, SPEED, projection_type, RADIUS, sun
+    global STARS, SPEED, projection_type, RADIUS, sun, THRESHOLD
 
     glEnable(GL_BLEND)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
    
-    id_star = "HD 187642"
+    id_star = "HD 48915"
     reference_star = next(star for star in STARS if star['id'] == id_star)
-    x_reference_star = reference_star['original']['x']
-    y_reference_star = reference_star['original']['y']
-    z_reference_star =  reference_star['original']['z']
+    position_reference_star = reference_star['original']['position']
 
-    parallax_reference_star = reference_star['parallax']
+    # distance_reference_star = reference_star['distance']
     
-    x_reference_star, y_reference_star, z_reference_star, _, _ = rotate_point(x_reference_star, y_reference_star, z_reference_star, lat, lon)
+    position_reference_star, _, _ = rotate_point(position_reference_star, lat, lon)
 
     for star in STARS:
         orig = star['original']
         curr = star['current']
         
-        x0, y0, z0 = orig['x'], orig['y'], orig['z']
-        parallax = star['parallax']
+        original_position = orig['position']
+        target_distance = orig['distance']
 
-        target_x, target_y, target_z, theta_new, phi_new = rotate_point(x0, y0, z0, lat, lon)        
+        target_position, theta_new, phi_new = rotate_point(original_position, lat, lon)        
 
         if go_to_star:
-            target_x -= x_reference_star
-            target_y -= y_reference_star
-            target_z -= z_reference_star
+            target_position = target_position - position_reference_star
+            target_distance = np.linalg.norm(target_position)
             
-            # REF
-            star_array = np.array([target_x, target_y, target_z])
-            new_star_distance = np.linalg.norm(star_array)
-            
-            # if target_x != 0 and target_y != 0 and target_z != 0:
             if (star['id'] != id_star):
-                theta_new = math.acos(target_z / new_star_distance)
-                phi_new = math.atan2(target_y, target_x)
-                target_mag = orig['mag'] - 5 * (math.log10(RADIUS / (new_star_distance * parallax)))
-                # star_size_target = 10 * np.e ** (-0.33 * mag_new)
-
-                # target_x /= new_star_distance / 100
-                # target_y /= new_star_distance / 100
-                # target_z /= new_star_distance / 100
+                theta_new = math.acos(target_position[2] / target_distance)
+        
+                target_mag = orig['mag'] - 5 * (math.log10(target_distance / target_distance))
             else:
-                if curr['x'] < 0.1 and curr['y'] < 0.1 and curr['z'] < 0.1:
+                if curr['distance'] < THRESHOLD:
                     target_mag = 4
                 else:
                     target_mag = -15
-                    
-            # else:
-            #     star_size_target = 10 * np.e ** (-0.33 * -10)
-
-            #     
-            #         star_size_target = 10 * np.e ** (-0.33 * 5)
         else:
             target_mag = orig['mag']
-            if (star['id'] == id_star):
-                print(orig['x'], curr['x'])
-    
+        
+        current_real_position = target_position.copy()
+        
         if estrelas_esfera_celeste:
-            target_x *= parallax
-            target_y *= parallax
-            target_z *= parallax
+            target_position *= RADIUS / target_distance 
             
             target_alpha = 1
         elif estrelas_carta_celeste:
-            target_x *= parallax
-            target_y *= parallax
-            target_z *= parallax
+            target_position *= RADIUS / target_distance 
             
-            if target_z > 0:
+            if target_position[2] > 0:
                 target_alpha = 1
+
                 if projection_type == "orthographic":
-                    target_z = RADIUS
+                    target_position[2] = RADIUS
                 elif projection_type == "ayre":
-                    factor = (2 * theta_new) / math.pi
-                    target_x = RADIUS * factor * math.cos(phi_new)
-                    target_y = RADIUS * factor * math.sin(phi_new)
-                    target_z = RADIUS
+                    target_position *= (2 * theta_new) / math.pi
+                    target_position[2] = RADIUS
                 elif projection_type == "ayre_expanded":
-                    target_x = RADIUS * theta_new * math.cos(phi_new)
-                    target_y = RADIUS * theta_new * math.sin(phi_new)
-                    target_z = RADIUS
+                    target_position *= theta_new
+                    target_position[2] = RADIUS
                 elif projection_type == "stereographic":
-                    target_x = 2 * RADIUS * math.tan(theta_new / 2) * math.cos(phi_new)
-                    target_y = 2 * RADIUS * math.tan(theta_new / 2) * math.sin(phi_new)
-                    target_z = RADIUS
+                    target_position *= 2 * math.tan(theta_new / 2) 
+                    target_position[2] = RADIUS
             else:
                 target_alpha = 0
         else:
@@ -146,28 +132,26 @@ def draw_stars(go_to_star, estrelas_esfera_celeste, estrelas_carta_celeste, star
 
         THRESHOLD = 0.01
 
-        dx = target_x - curr['x']
-        dy = target_y - curr['y']
-        dz = target_z - curr['z']
-
-        curr['x'] = target_x if abs(dx) < THRESHOLD else curr['x'] + dx * SPEED
-        curr['y'] = target_y if abs(dy) < THRESHOLD else curr['y'] + dy * SPEED
-        curr['z'] = target_z if abs(dz) < THRESHOLD else curr['z'] + dz * SPEED
-
-        dmag = target_mag - curr['mag']
-        curr['mag'] = target_mag if abs(dmag) < THRESHOLD else curr['mag'] + dmag * SPEED
+        dposition = target_position - curr['position']
+        curr['position'] = target_position if np.linalg.norm(dposition) < THRESHOLD else curr['position'] + dposition * SPEED
+        curr['real_position'] = current_real_position
+        curr['distance'] = np.linalg.norm(curr['real_position'])
+        
+        # dmag = target_mag - curr['mag']
+        # curr['mag'] = target_mag if abs(dmag) < THRESHOLD else curr['mag'] + dmag * SPEED
 
         dalpha = target_alpha - curr['alpha']
         curr['alpha'] = target_alpha if abs(dalpha) < THRESHOLD else curr['alpha'] + dalpha * SPEED
 
-        
-        if curr['alpha'] > 0.01:
-            star_size = 10 * np.e ** (-0.33 * curr['mag'])
-            glPointSize(star_size)
-            glBegin(GL_POINTS)
-            glColor4f(*star_color, curr['alpha'])
-            glVertex3f(curr['x'], curr['y'], curr['z'])
-            glEnd()
+        if curr['alpha'] > THRESHOLD:
+            # star_size = 10 * np.e ** (-0.33 * curr['mag'])
+            if (curr['distance'] != 0):
+                star_size = 10 * np.e ** (-0.33 * (orig['absolute_mag']+5*math.log10(curr['distance']/RADIUS)-5))
+                glPointSize(star_size)
+                glBegin(GL_POINTS)
+                glColor4f(*star_color, curr['alpha'])
+                glVertex3f(*curr['position'])
+                glEnd()
 
     glDisable(GL_BLEND)
     glutPostRedisplay()
