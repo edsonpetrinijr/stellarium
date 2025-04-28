@@ -9,6 +9,9 @@ def rotate_point(position, lat, lon):
     
     lat e lon são em radianos.
     """
+    x=position[0]
+    y=position[1]
+    z=position[2]
     # Rotação em torno do eixo Z (longitude)
     x = position[0]
     y = position[1]
