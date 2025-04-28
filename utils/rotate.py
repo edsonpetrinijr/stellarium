@@ -1,6 +1,5 @@
-from Variables import RADIUS
 import math
-import numpy as np
+import numpy as np 
 
 def rotate_point(position, lat, lon):
     """
@@ -14,6 +13,9 @@ def rotate_point(position, lat, lon):
     y=position[1]
     z=position[2]
     # Rotação em torno do eixo Z (longitude)
+    x = position[0]
+    y = position[1]
+    z = position[2]
     x1 = x * math.cos(lon) - y * math.sin(lon)
     y1 = x * math.sin(lon) + y * math.cos(lon)
     z1 = z
