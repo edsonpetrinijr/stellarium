@@ -5,7 +5,9 @@ SPEED = 0.05
 RADIUS = 100  # Tamanho da esfera
 t = 0
 
+ORIGINAL =[]
 STARS = []
+
 
 camera_carta_celeste = False
 camera_lateral = False

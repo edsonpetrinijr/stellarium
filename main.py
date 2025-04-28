@@ -171,6 +171,7 @@ def save_screenshot(filename="high_res_screenshot.png"):
     print(f"Imagem salva como {filename} ({width}x{height})")
 
 def keyboard(key, x, y):
+    global lat
     print(key)
     """
         1, 2, 3: Câmeras
@@ -212,6 +213,7 @@ def keyboard(key, x, y):
     
     elif key == b't':
         go_to_star = not go_to_star
+        recalc(go_to_star,lat)
 
     elif key == b'c':
         if (not red == 1):
@@ -255,7 +257,7 @@ def get_new_lon():
             print("Por favor, insira um número válido.")
 
 def get_new_lat():
-    global lat
+    global lat,go_to_star
 
     while True:
         try:
@@ -263,6 +265,7 @@ def get_new_lat():
             if -90 <= new_lat <= 90:
                 lat = np.radians(new_lat)
                 print(f"Latitude atualizada para: {lat} radianos")
+                recalc(go_to_star,lat) 
                 glutPostRedisplay()  # Solicita o redesenho da tela
             else:
                 print("A latitude deve estar entre -90 e 90 graus.")

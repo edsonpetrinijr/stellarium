@@ -1,8 +1,8 @@
 from Variables import RADIUS
 import math
+import numpy as np
 
-
-def rotate_point(x, y, z, lat, lon):
+def rotate_point(position, lat, lon):
     """
     Rotaciona um ponto (x, y, z) em uma esfera:
     - primeiro uma rotação pela longitude (em torno do eixo z),
@@ -10,6 +10,9 @@ def rotate_point(x, y, z, lat, lon):
     
     lat e lon são em radianos.
     """
+    x=position[0]
+    y=position[1]
+    z=position[2]
     # Rotação em torno do eixo Z (longitude)
     x1 = x * math.cos(lon) - y * math.sin(lon)
     y1 = x * math.sin(lon) + y * math.cos(lon)
@@ -25,4 +28,4 @@ def rotate_point(x, y, z, lat, lon):
     theta_new = math.acos(z2 / r)  # ângulo zenital
     phi_new = math.atan2(y2, x2)   # ângulo azimutal (longitude)
 
-    return x2, y2, z2, theta_new, phi_new
+    return np.array([x2, y2, z2]), theta_new, phi_new
