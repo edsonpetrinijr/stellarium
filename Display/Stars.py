@@ -70,12 +70,19 @@ def generate_points_on_sphere():
                 'current': {'position': real_target_position,'alpha':1},
                 'real_current': {'position': real_target_position, 'mag': mag,"distance_to_center":real_target_distance},
                 'real_target': {'position': real_target_position,"distance_to_center":real_target_distance,'theta':theta_new,'phi':phi_new},
+                'target': real_target_position,
+                'target_alpha':1
             })
 
-def recalc(go_to_star,lat):
+def recalc(go_to_star,lat,estrelas_esfera_celeste,estrelas_carta_celeste):
     global STARS, lon, RADIUS, ORIGINAL
     if go_to_star:
+        # ALNILAM
+        # id_star = "HD 37128"
+
+        # ALTAIR
         id_star = "HD 187642"
+        
         reference_star = next(star for star in ORIGINAL if star['id'] == id_star)
         position_reference_star = reference_star['original']['position']
         rotated_position_reference_star, _, _ = rotate_point(position_reference_star, lat, lon)
@@ -90,6 +97,54 @@ def recalc(go_to_star,lat):
             real_target['position'] = rotated_original-rotated_position_reference_star
         
             real_target['distance_to_center'] = np.linalg.norm(real_target['position'])
+            
+            curr = star['current']
+            real_current = star['real_current']
+        
+            if estrelas_esfera_celeste:
+                if real_target['distance_to_center'] > 0.0001:
+                    target_position = real_target['position']/real_target['distance_to_center']*RADIUS
+                    target_alpha = 1
+                else:
+                    target_position = np.array([0,0,0])
+                    target_alpha=0 
+            elif estrelas_carta_celeste:
+                if real_target['distance_to_center'] > 0.0001:
+                    target_position = real_target['position']/real_target['distance_to_center']*RADIUS
+                    target_alpha = 1
+                else:
+                    target_position = np.array([0,0,0])
+                    target_alpha=0
+                if target_position[2] > 0:
+                    target_alpha = 1
+                    theta_new = math.acos(real_target['position'][2]/real_target['distance_to_center'])
+                    phi_new = math.atan2(real_target['position'][1],real_target['position'][0])
+                    if projection_type == "orthographic":
+                        target_position[2]=RADIUS
+                    elif projection_type == "ayre":
+            
+                        factor = (2 * theta_new) / math.pi
+                        target_position[0] = factor*RADIUS*math.cos(phi_new) 
+                        target_position[1] = factor*RADIUS*math.sin(phi_new) 
+                        target_position[2]=RADIUS
+                    elif projection_type == "ayre_expanded":
+                    
+                        target_position[0] =  theta_new*RADIUS*math.cos(phi_new) 
+                        target_position[1] =  theta_new*RADIUS*math.sin(phi_new) 
+                        target_position[2]=RADIUS
+                    elif projection_type == "stereographic":
+                        theta_new = real_target['theta']
+                        target_position[2]=RADIUS
+                        target_position[0] *= 2 *  math.tan(theta_new / 2)
+                        target_position[1] *= 2 *  math.tan(theta_new / 2)
+                else:
+                    target_alpha = 0
+            else:
+                target_position = real_target['position']
+                target_alpha = 1
+            star['target']=target_position
+
+            star['target_alpha'] = target_alpha
     else:
         for star in STARS:
             real_target = star['real_target']
@@ -101,8 +156,53 @@ def recalc(go_to_star,lat):
             real_target['phi'] = phi_new
         
             real_target['distance_to_center'] = np.linalg.norm(real_target['position'])
-       
+            curr = star['current']
+            real_current = star['real_current']
+        
+            if estrelas_esfera_celeste:
+                if real_target['distance_to_center'] > 0.01:
+                    target_position = real_target['position']/real_target['distance_to_center']*RADIUS
+                    target_alpha = 1
+                else:
+                    target_position = np.array([0,0,0])
+                    target_alpha=0
+            elif estrelas_carta_celeste:
+                if real_target['distance_to_center'] > 0.01:
+                    target_position = real_target['position']/real_target['distance_to_center']*RADIUS
+                    target_alpha = 1
+                else:
+                    target_position = np.array([0,0,0])
+                    target_alpha=0
+                if target_position[2] > 0:
+                    target_alpha = 1
+                    theta_new = math.acos(real_target['position'][2]/real_target['distance_to_center'])
+                    phi_new = math.atan2(real_target['position'][1],real_target['position'][0])
+                    if projection_type == "orthographic":
+                        target_position[2]=RADIUS
+                    elif projection_type == "ayre":
+            
+                        factor = (2 * theta_new) / math.pi
+                        target_position[0] = factor*RADIUS*math.cos(phi_new) 
+                        target_position[1] = factor*RADIUS*math.sin(phi_new) 
+                        target_position[2]=RADIUS
+                    elif projection_type == "ayre_expanded":
+                    
+                        target_position[0] =  theta_new*RADIUS*math.cos(phi_new) 
+                        target_position[1] =  theta_new*RADIUS*math.sin(phi_new) 
+                        target_position[2]=RADIUS
+                    elif projection_type == "stereographic":
+                        theta_new = real_target['theta']
+                        target_position[2]=RADIUS
+                        target_position[0] *= 2 *  math.tan(theta_new / 2)
+                        target_position[1] *= 2 *  math.tan(theta_new / 2)
+                else:
+                    target_alpha = 0
+            else:
+                target_position = real_target['position']
+                target_alpha = 1
+            star['target']=target_position
 
+            star['target_alpha'] = target_alpha
 
     
 
@@ -111,47 +211,13 @@ def draw_stars(go_to_star, estrelas_esfera_celeste, estrelas_carta_celeste, star
 
     glEnable(GL_BLEND)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-   
     for star in STARS:
-        curr = star['current']
         real_target = star['real_target']
+        curr = star['current']
         real_current = star['real_current']
-    
-        if estrelas_esfera_celeste:
-            target_position = real_target['position']/real_target['distance_to_center']*RADIUS
-            target_alpha = 1
-        elif estrelas_carta_celeste:
-            target_position = real_target['position']/real_target['distance_to_center']*RADIUS
-            if target_position[2] > 0:
-                target_alpha = 1
-                theta_new = math.acos(real_target['position'][2]/real_target['distance_to_center'])
-                phi_new = math.atan2(real_target['position'][1],real_target['position'][0])
-                if projection_type == "orthographic":
-                    target_position[2]=RADIUS
-                elif projection_type == "ayre":
-        
-                    factor = (2 * theta_new) / math.pi
-                    target_position[0] = factor*RADIUS*math.cos(phi_new) 
-                    target_position[1] = factor*RADIUS*math.sin(phi_new) 
-                    target_position[2]=RADIUS
-                elif projection_type == "ayre_expanded":
-                   
-                    target_position[0] =  theta_new*RADIUS*math.cos(phi_new) 
-                    target_position[1] =  theta_new*RADIUS*math.sin(phi_new) 
-                    target_position[2]=RADIUS
-                elif projection_type == "stereographic":
-                    theta_new = real_target['theta']
-                    target_position[2]=RADIUS
-                    target_position[0] *= 2 *  math.tan(theta_new / 2)
-                    target_position[1] *= 2 *  math.tan(theta_new / 2)
-            else:
-                target_alpha = 0
-        else:
-            target_position = real_target['position']
-            target_alpha = 1
-
+        target_alpha=star['target_alpha']
+        target_position = star['target']
         THRESHOLD = 0.01
-
         dposition = target_position - curr['position']
 
         curr['position'] = target_position if np.linalg.norm(dposition) < THRESHOLD else curr['position'] + dposition * SPEED
@@ -171,12 +237,15 @@ def draw_stars(go_to_star, estrelas_esfera_celeste, estrelas_carta_celeste, star
             real_current['distance_to_center'] = np.linalg.norm(real_current['position'])
             if real_current['distance_to_center'] > 0.01:
                 real_current['mag'] = 10 * np.e ** (-0.33 * (star['original']['absolute_mag']+5*math.log10(real_current['distance_to_center']/RADIUS)-5))
-                star_size = real_current['mag']
-                glPointSize(star_size)
-                glBegin(GL_POINTS)
-                glColor4f(*star_color, curr['alpha'])
-                glVertex3f(*curr['position'])
-                glEnd()
+            else:
+                real_current['mag'] = 10 * np.e ** (-0.33 * (star['original']['absolute_mag']+5*math.log10(4.848e-6/RADIUS)-5))
+            star_size = real_current['mag']
+            glPointSize(star_size)
+            glBegin(GL_POINTS)
+            glColor4f(*star_color, curr['alpha'])
+            glVertex3f(*curr['position'])
+            glEnd()
+            
         
           
         

@@ -204,16 +204,22 @@ def keyboard(key, x, y):
     elif key == b'i':
         estrelas_esfera_celeste = False
         estrelas_carta_celeste = False
+        recalc(go_to_star,lat,estrelas_esfera_celeste, estrelas_carta_celeste)
+
     elif key == b'o':
         estrelas_esfera_celeste = True
         estrelas_carta_celeste = False
+        recalc(go_to_star,lat,estrelas_esfera_celeste, estrelas_carta_celeste)
+
     elif key == b'p':
         estrelas_esfera_celeste = False
         estrelas_carta_celeste = True
+        recalc(go_to_star,lat,estrelas_esfera_celeste, estrelas_carta_celeste)
+
     
     elif key == b't':
         go_to_star = not go_to_star
-        recalc(go_to_star,lat)
+        recalc(go_to_star,lat,estrelas_esfera_celeste, estrelas_carta_celeste)
 
     elif key == b'c':
         if (not red == 1):
@@ -257,7 +263,7 @@ def get_new_lon():
             print("Por favor, insira um número válido.")
 
 def get_new_lat():
-    global lat,go_to_star
+    global lat,go_to_star,estrelas_esfera_celeste, estrelas_carta_celeste
 
     while True:
         try:
@@ -265,7 +271,7 @@ def get_new_lat():
             if -90 <= new_lat <= 90:
                 lat = np.radians(new_lat)
                 print(f"Latitude atualizada para: {lat} radianos")
-                recalc(go_to_star,lat) 
+                recalc(go_to_star,lat,estrelas_esfera_celeste, estrelas_carta_celeste)
                 glutPostRedisplay()  # Solicita o redesenho da tela
             else:
                 print("A latitude deve estar entre -90 e 90 graus.")

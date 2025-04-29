@@ -167,7 +167,8 @@ def draw_morphing_equatorial_sphere_grid(
                     glBegin(GL_LINE_STRIP)
                     for k in range(start, idx):
                         xk, yk, zk, _ = samples[k]
-                        glVertex3f(xk, yk, zk)
+                        if not(t>0.98 and zk<0):
+                            glVertex3f(xk, yk, zk)
                     glEnd()
                 start = idx
                 flag = samples[idx][3]
@@ -178,7 +179,8 @@ def draw_morphing_equatorial_sphere_grid(
             glBegin(GL_LINE_STRIP)
             for k in range(start, len(samples)):
                 xk, yk, zk, _ = samples[k]
-                glVertex3f(xk, yk, zk)
+                if not(t>0.98 and zk<0):
+                    glVertex3f(xk, yk, zk)
             glEnd()
 
     # Draw rings, splitting at z=0 boundary
