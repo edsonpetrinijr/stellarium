@@ -74,15 +74,13 @@ def generate_points_on_sphere():
                 'target_alpha':1
             })
 
-def recalc(go_to_star,lat,estrelas_esfera_celeste,estrelas_carta_celeste):
+def recalc(go_to_star,lat,estrelas_esfera_celeste,estrelas_carta_celeste, id_star, projection_type):
     global STARS, lon, RADIUS, ORIGINAL
     if go_to_star:
         # ALNILAM
         # id_star = "HD 37128"
 
         # ALTAIR
-        id_star = "HD 187642"
-        
         reference_star = next(star for star in ORIGINAL if star['id'] == id_star)
         position_reference_star = reference_star['original']['position']
         rotated_position_reference_star, _, _ = rotate_point(position_reference_star, lat, lon)
@@ -128,7 +126,6 @@ def recalc(go_to_star,lat,estrelas_esfera_celeste,estrelas_carta_celeste):
                         target_position[1] = factor*RADIUS*math.sin(phi_new) 
                         target_position[2]=RADIUS
                     elif projection_type == "ayre_expanded":
-                    
                         target_position[0] =  theta_new*RADIUS*math.cos(phi_new) 
                         target_position[1] =  theta_new*RADIUS*math.sin(phi_new) 
                         target_position[2]=RADIUS

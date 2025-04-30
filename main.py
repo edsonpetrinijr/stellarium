@@ -20,6 +20,76 @@ from utils.conversions import *
 
 import threading
 
+def draw_hud():
+    glMatrixMode(GL_PROJECTION)
+    glPushMatrix()
+    glLoadIdentity()
+    gluOrtho2D(0, width, 0, height)
+    
+    glMatrixMode(GL_MODELVIEW)
+    glPushMatrix()
+    glLoadIdentity()
+
+    glDisable(GL_DEPTH_TEST)
+
+    # Botão: Câmera 1
+    draw_button(20, 20, 120, 60, "Cam 1")
+    # Botão: Câmera 2
+    draw_button(140, 20, 240, 60, "Cam 2")
+    # Botão: Câmera 3
+    draw_button(260, 20, 360, 60, "Cam 3")
+    # Caixa de texto na HUD
+    draw_input_box(20, 80, 300, 110)
+
+
+    glEnable(GL_DEPTH_TEST)
+
+    glPopMatrix()
+    glMatrixMode(GL_PROJECTION)
+    glPopMatrix()
+    glMatrixMode(GL_MODELVIEW)
+
+
+def draw_button(x1, y1, x2, y2, label):
+    glColor3f(0.2, 0.2, 0.8)
+    glBegin(GL_QUADS)
+    glVertex2f(x1, y1)
+    glVertex2f(x2, y1)
+    glVertex2f(x2, y2)
+    glVertex2f(x1, y2)
+    glEnd()
+
+    glColor3f(1, 1, 1)
+    glRasterPos2f(x1 + 10, y1 + 25)
+    for ch in label:
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, ord(ch))
+
+input_text = ""
+input_active = False
+
+def draw_input_box(x1, y1, x2, y2):
+    global input_text, input_active
+
+    if input_active:
+        glLineWidth(3.0)  # Borda mais grossa
+        glColor3f(1.0, 1.0, 0.0)  # Ex: amarelo para destacar
+    else:
+        glLineWidth(1.0)  # Borda padrão
+        glColor3f(1.0, 1.0, 1.0)  # Branco padrão
+
+    glBegin(GL_LINE_LOOP)
+    glVertex2f(x1, y1)
+    glVertex2f(x2, y1)
+    glVertex2f(x2, y2)
+    glVertex2f(x1, y2)
+    glEnd()
+
+    glLineWidth(1.0)  # Resetar para valor padrão após desenhar
+
+    glRasterPos2f(x1 + 5, y1 + 10)
+    for ch in input_text:
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, ord(ch))
+
 def init():
     glEnable(GL_DEPTH_TEST)
     glEnable(GL_POINT_SMOOTH)
@@ -106,6 +176,8 @@ def display():
 
     draw_stars(go_to_star, estrelas_esfera_celeste, estrelas_carta_celeste, star_color, lat, lon)
 
+    draw_hud()
+
     glDisable(GL_CULL_FACE)
     glutSwapBuffers()
 
@@ -117,10 +189,28 @@ def update_projection():
     gluPerspective(fov, aspect, 0.1, 1000000.0)
     glMatrixMode(GL_MODELVIEW)
 
+def hud_click(x, y):
+    global camera_carta_celeste, camera_lateral, input_active
+    input_active = (20 <= x <= 300 and 80 <= y <= 110)
+
+    if 20 <= x <= 120 and 20 <= y <= 60:
+        camera_carta_celeste = False
+        camera_lateral = False
+        input_active = False
+    elif 140 <= x <= 240 and 20 <= y <= 60:
+        camera_carta_celeste = True
+        camera_lateral = False
+    elif 260 <= x <= 360 and 20 <= y <= 60:
+        camera_carta_celeste = False
+        camera_lateral = True
+    
+    glutPostRedisplay()
+
 def mouse(button, state, x, y):
     global mouse_down, move, last_x, last_y, fov, visao_carta_celeste
 
     if button == GLUT_LEFT_BUTTON:
+        hud_click(x, height - y)
         mouse_down = (state == GLUT_DOWN)
         last_x = x
         last_y = y
@@ -183,53 +273,78 @@ def keyboard(key, x, y):
     global estrelas_carta_celeste, estrelas_esfera_celeste, desenhar_chao, desenhar_grade_equatorial, desenhar_grade_azimutal, red, green, blue, star_color, viewer_height, go_to_star
     global camera_normal, camera_carta_celeste, camera_lateral
     global t
+    global input_text
+    global REFERENCE_STAR, projection_type
 
-    if key == b'1':
-        camera_carta_celeste = False
-        camera_lateral = False
-    elif key == b'2':
-        camera_carta_celeste = True
-        camera_lateral = False
-    elif key == b'3':
-        camera_carta_celeste = False
-        camera_lateral = True
+    if input_active:
+        if key == b'\r':  # Enter
+            print("Texto digitado:", input_text)
+            REFERENCE_STAR = input_text
+            recalc(go_to_star,lat,estrelas_esfera_celeste, estrelas_carta_celeste, REFERENCE_STAR, projection_type)
+            input_text = ""
+        elif key == b'\x08':  # Backspace
+            input_text = input_text[:-1]
+        elif 32 <= ord(key) <= 126:  # Caracteres imprimíveis
+            input_text += key.decode()
+    else:
+        if key == b'1':
+            camera_carta_celeste = False
+            camera_lateral = False
+        elif key == b'2':
+            camera_carta_celeste = True
+            camera_lateral = False
+        elif key == b'3':
+            camera_carta_celeste = False
+            camera_lateral = True
 
-    elif key == b'e':
-        desenhar_grade_equatorial = not desenhar_grade_equatorial
-    elif key == b'z':
-        desenhar_grade_azimutal = not desenhar_grade_azimutal
-    elif key == b'g':
-        desenhar_chao = not desenhar_chao
-    
-    elif key == b'i':
-        estrelas_esfera_celeste = False
-        estrelas_carta_celeste = False
-        recalc(go_to_star,lat,estrelas_esfera_celeste, estrelas_carta_celeste)
+        elif key == b'e':
+            desenhar_grade_equatorial = not desenhar_grade_equatorial
+        elif key == b'z':
+            desenhar_grade_azimutal = not desenhar_grade_azimutal
+        elif key == b'g':
+            desenhar_chao = not desenhar_chao
+        
+        elif key == b'i':
+            estrelas_esfera_celeste = False
+            estrelas_carta_celeste = False
+            recalc(go_to_star,lat,estrelas_esfera_celeste, estrelas_carta_celeste, REFERENCE_STAR, projection_type)
 
-    elif key == b'o':
-        estrelas_esfera_celeste = True
-        estrelas_carta_celeste = False
-        recalc(go_to_star,lat,estrelas_esfera_celeste, estrelas_carta_celeste)
+        elif key == b'o':
+            estrelas_esfera_celeste = True
+            estrelas_carta_celeste = False
+            recalc(go_to_star,lat,estrelas_esfera_celeste, estrelas_carta_celeste, REFERENCE_STAR, projection_type)
 
-    elif key == b'p':
-        estrelas_esfera_celeste = False
-        estrelas_carta_celeste = True
-        recalc(go_to_star,lat,estrelas_esfera_celeste, estrelas_carta_celeste)
+        elif key == b'p':
+            estrelas_esfera_celeste = False
+            estrelas_carta_celeste = True
+            recalc(go_to_star,lat,estrelas_esfera_celeste, estrelas_carta_celeste, REFERENCE_STAR, projection_type)
 
-    
-    elif key == b't':
-        go_to_star = not go_to_star
-        recalc(go_to_star,lat,estrelas_esfera_celeste, estrelas_carta_celeste)
+        
+        elif key == b't':
+            go_to_star = not go_to_star
+            recalc(go_to_star,lat,estrelas_esfera_celeste, estrelas_carta_celeste, REFERENCE_STAR, projection_type)
 
-    elif key == b'c':
-        if (not red == 1):
-            red, green, blue = 1, 1, 1
-            star_color = (0,0,0)
-        else:
-            red = 0.05
-            green = 0.05
-            blue = 0.1
-            star_color = (1,1,1)
+        elif key == b'c':
+            if (not red == 1):
+                red, green, blue = 1, 1, 1
+                star_color = (0,0,0)
+            else:
+                red = 0.05
+                green = 0.05
+                blue = 0.1
+                star_color = (1,1,1)
+        elif key == b'7':
+            projection_type = 'orthographic'
+            recalc(go_to_star,lat,estrelas_esfera_celeste, estrelas_carta_celeste, REFERENCE_STAR, projection_type)
+        elif key == b'8':
+            projection_type = 'ayre'
+            recalc(go_to_star,lat,estrelas_esfera_celeste, estrelas_carta_celeste, REFERENCE_STAR, projection_type)
+        elif key == b'9':
+            projection_type = 'ayre_expanded'
+            recalc(go_to_star,lat,estrelas_esfera_celeste, estrelas_carta_celeste, REFERENCE_STAR, projection_type)
+        elif key == b'0':
+            projection_type = 'stereographic' 
+            recalc(go_to_star,lat,estrelas_esfera_celeste, estrelas_carta_celeste, REFERENCE_STAR, projection_type)
 
 def specialKeyboard(key, x, y):
     print(key)
@@ -271,7 +386,7 @@ def get_new_lat():
             if -90 <= new_lat <= 90:
                 lat = np.radians(new_lat)
                 print(f"Latitude atualizada para: {lat} radianos")
-                recalc(go_to_star,lat,estrelas_esfera_celeste, estrelas_carta_celeste)
+                recalc(go_to_star,lat,estrelas_esfera_celeste, estrelas_carta_celeste, projection_type)
                 glutPostRedisplay()  # Solicita o redesenho da tela
             else:
                 print("A latitude deve estar entre -90 e 90 graus.")

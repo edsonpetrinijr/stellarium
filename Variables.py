@@ -1,11 +1,12 @@
 import numpy as np
 import math
 
+REFERENCE_STAR = 'HD 187642'
 SPEED = 0.05
 RADIUS = 100  # Tamanho da esfera
 t = 0
 
-ORIGINAL =[]
+ORIGINAL = []
 STARS = []
 
 
