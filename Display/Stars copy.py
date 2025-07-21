@@ -11,7 +11,7 @@ from Variables import *
 from utils.rotate import rotate_point
 
 def generate_points_on_sphere():
-    global STARS, lat, lon, RADIUS
+    global STARS, lat, lon, RADIUS, ORIGINAL
     
     df = pd.read_csv('data.csv')
 
@@ -36,138 +36,150 @@ def generate_points_on_sphere():
         # star_size = 10 * np.e ** (-0.33 * mag)
 
         if (mag < 5):
-            STARS.append({
+            ORIGINAL.append({
                 'id': identifier,
-                'original': {'x': x, 'y': y, 'z': z, 'mag': mag, 'alpha': 1},
-                'current': {'x': x, 'y': y, 'z': z, 'mag': mag, 'alpha': 1},
+                'original': {'position': np.array([x,y,z]), 'absolute_mag': mag-5*math.log10(1/parallax)+5,"distance_to_sun":RADIUS/parallax},
+                # 'current': {'x': x, 'y': y, 'z': z, 'mag': mag, 'alpha': 1},
                 'theta': theta, 'phi': phi, 'ra': ra, 'dec': dec,
                 'parallax': parallax,
             })
-        # STARS.append({
-        #     'id': "Sol",
-        #     'original': {'x': 0, 'y': 0, 'z': 0, 'mag': 0, 'alpha': 0},
-        #     'current': {'x': 0, 'y': 0, 'z': 0, 'mag': 0, 'alpha': 0},
-        #     'theta': 0, 'phi': 0, 'ra': 0, 'dec': 0,
-        #     'parallax': 0,
-        #     })
+    #id_star = "HD 187642"
+    #reference_star = next(star for star in ORIGINAL if star['id'] == id_star)
+    #position_reference_star = reference_star['original']['position']
+    #rotated_position_reference_star, _, _ = rotate_point(position_reference_star, lat, lon)
+    for star in ORIGINAL:
+        orig = star['original']
+        
+        initial_position = orig['position']
+        parallax = star['parallax']
+
+        rotated_position, theta_new, phi_new = rotate_point(initial_position, lat, lon)        
+
+        #real_target_position =rotated_position - rotated_position_reference_star
+        real_target_position = rotated_position
+        real_target_distance = np.linalg.norm(real_target_position)
+    
+        if real_target_distance != 0:
+            mag = orig['absolute_mag']+math.log10(real_target_distance/RADIUS)-5
+        else:
+            mag = None
+        
+        STARS.append({
+                'id': star['id'],
+                'original': {'position': orig['position'], 'absolute_mag': orig['absolute_mag'],"distance_to_sun":orig['distance_to_sun']},
+                'current': {'position': real_target_position,'alpha':1},
+                'real_current': {'position': real_target_position, 'mag': mag,"distance_to_center":real_target_distance},
+                'real_target': {'position': real_target_position,"distance_to_center":real_target_distance,'theta':theta_new,'phi':phi_new},
+            })
+
+def recalc(go_to_star,lat):
+    global STARS, lon, RADIUS, ORIGINAL
+    if go_to_star:
+        id_star = "HD 187642"
+        reference_star = next(star for star in ORIGINAL if star['id'] == id_star)
+        position_reference_star = reference_star['original']['position']
+        rotated_position_reference_star, _, _ = rotate_point(position_reference_star, lat, lon)
+        
+        for star in STARS:
+            real_target = star['real_target']
+            original = star['original']
+            rotated_original,theta_new,phi_new = rotate_point(original['position'],lat,lon)
+            real_target['theta'] = theta_new
+            real_target['phi'] = phi_new
+
+            real_target['position'] = rotated_original-rotated_position_reference_star
+        
+            real_target['distance_to_center'] = np.linalg.norm(real_target['position'])
+    else:
+        for star in STARS:
+            real_target = star['real_target']
+            original = star['original']
+            rotated_original,theta_new,phi_new = rotate_point(original['position'],lat,lon)
+
+            real_target['position'] = rotated_original
+            real_target['theta'] = theta_new
+            real_target['phi'] = phi_new
+        
+            real_target['distance_to_center'] = np.linalg.norm(real_target['position'])
+       
+
+
+    
 
 def draw_stars(go_to_star, estrelas_esfera_celeste, estrelas_carta_celeste, star_color, lat, lon):
-    global STARS, SPEED, projection_type, RADIUS, sun
+    global STARS, SPEED, projection_type, RADIUS, sun, ORIGINAL
 
     glEnable(GL_BLEND)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
    
-    id_star = "HD 187642"
-    reference_star = next(star for star in STARS if star['id'] == id_star)
-    x_reference_star = reference_star['original']['x']
-    y_reference_star = reference_star['original']['y']
-    z_reference_star =  reference_star['original']['z']
-
-    parallax_reference_star = reference_star['parallax']
-    
-    x_reference_star, y_reference_star, z_reference_star, _, _ = rotate_point(x_reference_star, y_reference_star, z_reference_star, lat, lon)
-
     for star in STARS:
-        orig = star['original']
         curr = star['current']
-        
-        x0, y0, z0 = orig['x'], orig['y'], orig['z']
-        parallax = star['parallax']
-
-        target_x, target_y, target_z, theta_new, phi_new = rotate_point(x0, y0, z0, lat, lon)        
-
-        if go_to_star:
-            target_x -= x_reference_star
-            target_y -= y_reference_star
-            target_z -= z_reference_star
-            
-            # REF
-            star_array = np.array([target_x, target_y, target_z])
-            new_star_distance = np.linalg.norm(star_array)
-            
-            # if target_x != 0 and target_y != 0 and target_z != 0:
-            if (star['id'] != id_star):
-                theta_new = math.acos(target_z / new_star_distance)
-                phi_new = math.atan2(target_y, target_x)
-                target_mag = orig['mag'] - 5 * (math.log10(RADIUS / (new_star_distance * parallax)))
-                # star_size_target = 10 * np.e ** (-0.33 * mag_new)
-
-                # target_x /= new_star_distance / 100
-                # target_y /= new_star_distance / 100
-                # target_z /= new_star_distance / 100
-            else:
-                if curr['x'] < 0.1 and curr['y'] < 0.1 and curr['z'] < 0.1:
-                    target_mag = 4
-                else:
-                    target_mag = -15
-                    
-            # else:
-            #     star_size_target = 10 * np.e ** (-0.33 * -10)
-
-            #     
-            #         star_size_target = 10 * np.e ** (-0.33 * 5)
-        else:
-            target_mag = orig['mag']
-            if (star['id'] == id_star):
-                print(orig['x'], curr['x'])
+        real_target = star['real_target']
+        real_current = star['real_current']
     
         if estrelas_esfera_celeste:
-            target_x *= parallax
-            target_y *= parallax
-            target_z *= parallax
-            
+            target_position = real_target['position']/real_target['distance_to_center']*RADIUS
             target_alpha = 1
         elif estrelas_carta_celeste:
-            target_x *= parallax
-            target_y *= parallax
-            target_z *= parallax
-            
-            if target_z > 0:
+            target_position = real_target['position']/real_target['distance_to_center']*RADIUS
+            if target_position[2] > 0:
                 target_alpha = 1
+                theta_new = math.acos(real_target['position'][2]/real_target['distance_to_center'])
+                phi_new = math.atan2(real_target['position'][1],real_target['position'][0])
                 if projection_type == "orthographic":
-                    target_z = RADIUS
+                    target_position[2]=RADIUS
                 elif projection_type == "ayre":
+        
                     factor = (2 * theta_new) / math.pi
-                    target_x = RADIUS * factor * math.cos(phi_new)
-                    target_y = RADIUS * factor * math.sin(phi_new)
-                    target_z = RADIUS
+                    target_position[0] = factor*RADIUS*math.cos(phi_new) 
+                    target_position[1] = factor*RADIUS*math.sin(phi_new) 
+                    target_position[2]=RADIUS
                 elif projection_type == "ayre_expanded":
-                    target_x = RADIUS * theta_new * math.cos(phi_new)
-                    target_y = RADIUS * theta_new * math.sin(phi_new)
-                    target_z = RADIUS
+                   
+                    target_position[0] =  theta_new*RADIUS*math.cos(phi_new) 
+                    target_position[1] =  theta_new*RADIUS*math.sin(phi_new) 
+                    target_position[2]=RADIUS
                 elif projection_type == "stereographic":
-                    target_x = 2 * RADIUS * math.tan(theta_new / 2) * math.cos(phi_new)
-                    target_y = 2 * RADIUS * math.tan(theta_new / 2) * math.sin(phi_new)
-                    target_z = RADIUS
+                    theta_new = real_target['theta']
+                    target_position[2]=RADIUS
+                    target_position[0] *= 2 *  math.tan(theta_new / 2)
+                    target_position[1] *= 2 *  math.tan(theta_new / 2)
             else:
                 target_alpha = 0
         else:
+            target_position = real_target['position']
             target_alpha = 1
 
         THRESHOLD = 0.01
 
-        dx = target_x - curr['x']
-        dy = target_y - curr['y']
-        dz = target_z - curr['z']
+        dposition = target_position - curr['position']
 
-        curr['x'] = target_x if abs(dx) < THRESHOLD else curr['x'] + dx * SPEED
-        curr['y'] = target_y if abs(dy) < THRESHOLD else curr['y'] + dy * SPEED
-        curr['z'] = target_z if abs(dz) < THRESHOLD else curr['z'] + dz * SPEED
+        curr['position'] = target_position if np.linalg.norm(dposition) < THRESHOLD else curr['position'] + dposition * SPEED
+        
+        dreal_position = real_target['position'] - real_current['position'] 
+        
+        real_current['position'] = real_target['position'] if np.linalg.norm(dreal_position) < THRESHOLD else real_current['position']  + dreal_position * SPEED
+        
 
-        dmag = target_mag - curr['mag']
-        curr['mag'] = target_mag if abs(dmag) < THRESHOLD else curr['mag'] + dmag * SPEED
+        
 
         dalpha = target_alpha - curr['alpha']
         curr['alpha'] = target_alpha if abs(dalpha) < THRESHOLD else curr['alpha'] + dalpha * SPEED
 
         
         if curr['alpha'] > 0.01:
-            star_size = 10 * np.e ** (-0.33 * curr['mag'])
-            glPointSize(star_size)
-            glBegin(GL_POINTS)
-            glColor4f(*star_color, curr['alpha'])
-            glVertex3f(curr['x'], curr['y'], curr['z'])
-            glEnd()
+            real_current['distance_to_center'] = np.linalg.norm(real_current['position'])
+            if real_current['distance_to_center'] > 0.01:
+                real_current['mag'] = 10 * np.e ** (-0.33 * (star['original']['absolute_mag']+5*math.log10(real_current['distance_to_center']/RADIUS)-5))
+                star_size = real_current['mag']
+                glPointSize(star_size)
+                glBegin(GL_POINTS)
+                glColor4f(*star_color, curr['alpha'])
+                glVertex3f(*curr['position'])
+                glEnd()
+        
+          
+        
 
     glDisable(GL_BLEND)
     glutPostRedisplay()
